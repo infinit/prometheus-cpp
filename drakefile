@@ -1,0 +1,57 @@
+import drake
+import drake.cmake
+import drake.cxx
+import os
+
+# The paths to libprometheus-cpp headers.
+prometheus_include_path = []
+# The path to libprometheus-cpp library.
+prometheus_lib = None
+sources = None
+cxx_config = None
+
+def configure(
+    cxx_toolkit,
+    in_cxx_config,
+    protoc,
+    protobuf_include,
+    protobuf_lib,
+    cmake_env = {}
+):
+  global prometheus_include_path, prometheus_lib, sources
+  prometheus_include_path = [
+    # libprometheus-cpp's header.
+    drake.path_root() / drake.path_source('include'),
+    # prometheus_client_model, a submodule, that contains the protobuf
+    # support: metrics.pb.h.
+    drake.path_root() / drake.path_build('lib/cpp'),
+  ]
+  prometheus_lib = drake.cxx.StaticLib('lib/libprometheus-cpp.a')
+  srcs = drake.nodes(
+    'CMakeLists.txt',
+    )
+  dsts = [prometheus_lib]
+  targets = [
+    'prometheus-cpp',
+  ]
+  cmake_env.update({
+    'Protobuf_INCLUDE_DIR': protobuf_include,
+    'Protobuf_LIBRARIES': protobuf_lib.path(absolute = True),
+    'Protobuf_PROTOC_EXECUTABLE': protoc.path(absolute = True),
+    })
+  if drake.path_source().absolute():
+    cmake_source = drake.path_source() / drake.Drake.current.prefix
+  else:
+    cmake_source = '../../../../prometheus/prometheus-cpp'
+  print("SRC:", cmake_source)
+  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets,
+                                   path_to_cmake_source = cmake_source)
+  global cxx_config
+  cxx_config = drake.cxx.Config(in_cxx_config)
+  cxx_config.add_system_include_path(protobuf_include)
+
+
+
+# Local Variables:
+# mode: python
+# End:
