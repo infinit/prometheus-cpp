@@ -3,12 +3,21 @@ import drake.cmake
 import drake.cxx
 import os
 
-# The paths to libprometheus-cpp headers.
+# The paths to the libprometheus-cpp headers.
 prometheus_include_path = []
-# The path to libprometheus-cpp library.
+# The path to the libprometheus-cpp library.
 prometheus_lib = None
 sources = None
 cxx_config = None
+
+shlibexts = {
+  drake.os.android: 'so',
+  drake.os.ios: 'dylib',
+  drake.os.ios_simulator: 'dylib',
+  drake.os.linux: 'so',
+  drake.os.macos: 'dylib',
+  drake.os.windows: 'dll',
+}
 
 def configure(
     cxx_toolkit,
@@ -16,7 +25,7 @@ def configure(
     protoc,
     protobuf_include,
     protobuf_lib,
-    cmake_env = {}
+    cmake_vars = {}
 ):
   global prometheus_include_path, prometheus_lib, sources
   prometheus_include_path = [
@@ -26,15 +35,18 @@ def configure(
     # support: metrics.pb.h.
     drake.path_root() / drake.path_build('lib/cpp'),
   ]
-  prometheus_lib = drake.cxx.StaticLib('lib/libprometheus-cpp.a')
+  prometheus_lib = drake.cxx.DynLib('lib/libprometheus-cpp.{}'
+                                    .format(shlibexts[cxx_toolkit.os]))
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
   dsts = [prometheus_lib]
+  # Makefile target to run.
   targets = [
     'prometheus-cpp',
   ]
-  cmake_env.update({
+  cmake_vars.update({
+    'BUILD_SHARED_LIBS': 'ON',
     'Protobuf_INCLUDE_DIR': protobuf_include,
     'Protobuf_LIBRARIES': protobuf_lib.path(absolute = True),
     'Protobuf_PROTOC_EXECUTABLE': protoc.path(absolute = True),
@@ -44,7 +56,7 @@ def configure(
   else:
     cmake_source = '../../../../prometheus/prometheus-cpp'
   print("SRC:", cmake_source)
-  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets,
+  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_vars, targets = targets,
                                    path_to_cmake_source = cmake_source)
   global cxx_config
   cxx_config = drake.cxx.Config(in_cxx_config)
