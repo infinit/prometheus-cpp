@@ -33,7 +33,8 @@ class Family : public Collectable {
   std::vector<io::prometheus::client::MetricFamily> Collect() override;
 
  private:
-  std::unordered_map<std::size_t, std::unique_ptr<T>> metrics_;
+  /// hash -> (unique_ptr, refcount).
+  std::unordered_map<std::size_t, std::pair<std::unique_ptr<T>, int>> metrics_;
   std::unordered_map<std::size_t, std::map<std::string, std::string>> labels_;
   std::unordered_map<T*, std::size_t> labels_reverse_lookup_;
 
@@ -59,11 +60,20 @@ T& Family<T>::Add(const std::map<std::string, std::string>& labels,
                   Args&&... args) {
   std::lock_guard<std::mutex> lock{mutex_};
   auto hash = hash_labels(labels);
-  auto metric = new T(std::forward<Args>(args)...);
+  auto p = metrics_.emplace(hash, std::make_pair(nullptr, 0));
+  auto& metric = p.first->second.first;
+  if (p.second)
+  {
+    // Insertion.
+    metric = std::make_unique<T>(std::forward<Args>(args)...);
+    p.first->second.second = 1;
+    labels_.emplace(hash, labels);
+    labels_reverse_lookup_.emplace(metric.get(), hash);
+  }
+  else
+    // Update.
+    ++p.first->second.second;
 
-  metrics_.insert(std::make_pair(hash, std::unique_ptr<T>{metric}));
-  labels_.insert({hash, labels});
-  labels_reverse_lookup_.insert({metric, hash});
   return *metric;
 }
 
@@ -87,9 +97,14 @@ void Family<T>::Remove(T* metric) {
   }
 
   auto hash = labels_reverse_lookup_.at(metric);
-  metrics_.erase(hash);
-  labels_.erase(hash);
-  labels_reverse_lookup_.erase(metric);
+  auto i = metrics_.find(hash);
+  assert(i != metrics_.end());
+  if (--i->second.second == 0)
+  {
+    metrics_.erase(i);
+    labels_.erase(hash);
+    labels_reverse_lookup_.erase(metric);
+  }
 }
 
 template <typename T>
@@ -100,7 +115,7 @@ std::vector<io::prometheus::client::MetricFamily> Family<T>::Collect() {
   family.set_help(help_);
   family.set_type(T::metric_type);
   for (const auto& m : metrics_) {
-    *family.add_metric() = std::move(CollectMetric(m.first, m.second.get()));
+    *family.add_metric() = std::move(CollectMetric(m.first, m.second.first.get()));
   }
   return {family};
 }
