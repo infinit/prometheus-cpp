@@ -39,7 +39,36 @@ def configure(
                                     .format(shlibexts[cxx_toolkit.os]))
   srcs = drake.nodes(
     'CMakeLists.txt',
+    'include/prometheus/collectable.h',
+    'include/prometheus/counter.h',
+    'include/prometheus/counter_builder.h',
+    'include/prometheus/exposer.h',
+    'include/prometheus/family.h',
+    'include/prometheus/gauge.h',
+    'include/prometheus/gauge_builder.h',
+    'include/prometheus/histogram.h',
+    'include/prometheus/histogram_builder.h',
+    'include/prometheus/metric.h',
+    'include/prometheus/registry.h',
+    'lib/counter.cc',
+    'lib/counter_builder.cc',
+    'lib/exposer.cc',
+    'lib/gauge.cc',
+    'lib/gauge_builder.cc',
+    'lib/handler.cc',
+    'lib/handler.h',
+    'lib/histogram.cc',
+    'lib/histogram_builder.cc',
+    'lib/json_serializer.cc',
+    'lib/json_serializer.h',
+    'lib/protobuf_delimited_serializer.cc',
+    'lib/protobuf_delimited_serializer.h',
+    'lib/registry.cc',
+    'lib/serializer.h',
+    'lib/text_serializer.cc',
+    'lib/text_serializer.h',
     )
+
   dsts = [prometheus_lib]
   # Makefile target to run.
   targets = [
