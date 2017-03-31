@@ -66,7 +66,7 @@ T& Family<T>::Add(const std::map<std::string, std::string>& labels,
   if (p.second)
   {
     // Insertion.
-    metric = std::make_unique<T>(std::forward<Args>(args)...);
+    metric = std::unique_ptr<T>(new T(std::forward<Args>(args)...));
     p.first->second.second = 1;
     labels_.emplace(hash, labels);
     labels_reverse_lookup_.emplace(metric.get(), hash);
