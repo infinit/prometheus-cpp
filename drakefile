@@ -79,6 +79,13 @@ def configure(
     'Protobuf_INCLUDE_DIR': protobuf_include,
     'Protobuf_LIBRARIES': protobuf_lib.path(absolute = True),
     'Protobuf_PROTOC_EXECUTABLE': protoc.path(absolute = True),
+    # CivetWeb, a small HTTP in C and C++, is used an a "object"
+    # library (aka "convenience library" in Libtool parlance) in
+    # libprometheus-cpp.  But compiling the latter as a shared library
+    # does not make the former PIC.  So force -fPIC.
+    # https://cmake.org/pipermail/cmake/2012-June/050941.html
+    'CMAKE_C_FLAGS': '-fPIC',
+    'CMAKE_CXX_FLAGS': '-fPIC',
     })
   if drake.path_source().absolute():
     cmake_source = drake.path_source() / drake.Drake.current.prefix
