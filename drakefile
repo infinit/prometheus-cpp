@@ -69,16 +69,19 @@ def configure(
     'lib/text_serializer.h',
     )
 
-  dsts = [prometheus_lib]
+  dsts = [prometheus_lib] + drake.nodes(
+    'lib/cpp/metrics.pb.h'
+    )
+
   # Makefile target to run.
   targets = [
     'prometheus-cpp',
   ]
   cmake_vars.update({
     'BUILD_SHARED_LIBS': 'ON',
-    'Protobuf_INCLUDE_DIR': protobuf_include,
-    'Protobuf_LIBRARIES': protobuf_lib.path(absolute = True),
-    'Protobuf_PROTOC_EXECUTABLE': protoc.path(absolute = True),
+    'PROTOBUF_INCLUDE_DIR': protobuf_include,
+    'PROTOBUF_LIBRARY': protobuf_lib.path(absolute = True),
+    'PROTOBUF_PROTOC_EXECUTABLE': protoc.path(absolute = True),
     # CivetWeb, a small HTTP in C and C++, is used an a "object"
     # library (aka "convenience library" in Libtool parlance) in
     # libprometheus-cpp.  But compiling the latter as a shared library
