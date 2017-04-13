@@ -37,7 +37,7 @@ def configure(
   ]
   prometheus_lib = drake.cxx.DynLib('lib/libprometheus-cpp.{}'
                                     .format(shlibexts[cxx_toolkit.os]))
-  srcs = drake.nodes(
+  srcs = [protoc, protobuf_lib] + drake.nodes(
     'CMakeLists.txt',
     'include/prometheus/collectable.h',
     'include/prometheus/counter.h',
