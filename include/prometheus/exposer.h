@@ -18,6 +18,9 @@ class MetricsHandler;
 class Exposer {
  public:
   Exposer(const std::string& bind_address);
+  /// Change the exposition port.
+  void
+  rebind(const std::string& bind_address);
   ~Exposer();
   void RegisterCollectable(const std::weak_ptr<Collectable>& collectable);
 
