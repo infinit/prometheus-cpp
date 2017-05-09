@@ -23,7 +23,7 @@ def configure(
     cxx_toolkit,
     in_cxx_config,
     protoc,
-    protobuf_include,
+    protobuf_config,
     protobuf_lib,
     cmake_vars = {}
 ):
@@ -77,9 +77,20 @@ def configure(
   targets = [
     'prometheus-cpp',
   ]
+
+  class PrometheusCMakeBuilder(drake.cmake.CMakeBuilder):
+
+    def execute(self):
+      if not super().execute():
+        return False
+      self.cmd(
+        'Fix rpath for {}'.format(prometheus_lib),
+        cxx_toolkit.rpath_set_command(prometheus_lib, '.'))
+      return True
+
   cmake_vars.update({
     'BUILD_SHARED_LIBS': 'ON',
-    'PROTOBUF_INCLUDE_DIR': protobuf_include,
+    'PROTOBUF_INCLUDE_DIR': protobuf_config.protobuf_include_dir,
     'PROTOBUF_LIBRARY': protobuf_lib.path(absolute = True),
     'PROTOBUF_PROTOC_EXECUTABLE': protoc.path(absolute = True),
     # CivetWeb, a small HTTP in C and C++, is used an a "object"
@@ -94,11 +105,12 @@ def configure(
     cmake_source = drake.path_source() / drake.Drake.current.prefix
   else:
     cmake_source = '../../../../prometheus/prometheus-cpp'
-  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_vars, targets = targets,
-                                   path_to_cmake_source = cmake_source)
+  cmake = PrometheusCMakeBuilder(
+    cxx_toolkit, srcs, dsts, cmake_vars, targets = targets,
+    path_to_cmake_source = cmake_source)
   global cxx_config
   cxx_config = drake.cxx.Config(in_cxx_config)
-  cxx_config.add_system_include_path(protobuf_include)
+  cxx_config += protobuf_config
 
 
 
