@@ -10,15 +10,6 @@ prometheus_lib = None
 sources = None
 cxx_config = None
 
-shlibexts = {
-  drake.os.android: 'so',
-  drake.os.ios: 'dylib',
-  drake.os.ios_simulator: 'dylib',
-  drake.os.linux: 'so',
-  drake.os.macos: 'dylib',
-  drake.os.windows: 'dll',
-}
-
 def configure(
     cxx_toolkit,
     in_cxx_config,
@@ -35,8 +26,7 @@ def configure(
     # support: metrics.pb.h.
     drake.path_root() / drake.path_build('lib/cpp'),
   ]
-  prometheus_lib = drake.cxx.DynLib('lib/libprometheus-cpp.{}'
-                                    .format(shlibexts[cxx_toolkit.os]))
+  prometheus_lib = drake.cxx.DynLib('lib/prometheus-cpp', tk = cxx_toolkit)
   srcs = [protoc, protobuf_lib] + drake.nodes(
     'CMakeLists.txt',
     'include/prometheus/collectable.h',
