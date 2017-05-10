@@ -10,6 +10,15 @@ prometheus_lib = None
 sources = None
 cxx_config = None
 
+class GRPCBuilder(drake.cmake.CMakeBuilder):
+
+  def execute(self):
+    if super().execute():
+      drake.cxx.set_lib_id(protobuf_lib.path(), self.toolkit)
+      return True
+    else:
+      return False
+
 def configure(
     cxx_toolkit,
     in_cxx_config,
@@ -76,6 +85,7 @@ def configure(
       self.cmd(
         'Fix rpath for {}'.format(prometheus_lib),
         cxx_toolkit.rpath_set_command(prometheus_lib, '.'))
+      drake.cxx.set_lib_id(prometheus_lib.path(), self.toolkit)
       return True
 
   cmake_vars.update({
