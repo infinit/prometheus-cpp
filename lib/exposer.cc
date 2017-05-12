@@ -27,7 +27,7 @@ void
 Exposer::rebind(const std::string& bind_address) {
   server_.reset(new CivetServer{{
       "listening_ports", bind_address.c_str(),
-      "num_threads", "1",
+      "num_threads",  "1",
   }});
   server_->addHandler(uri, metrics_handler_.get());
 }
