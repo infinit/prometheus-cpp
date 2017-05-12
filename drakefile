@@ -76,7 +76,7 @@ def configure(
       self.cmd(
         'Fix rpath for {}'.format(prometheus_lib),
         cxx_toolkit.rpath_set_command(prometheus_lib, '.'))
-      drake.cxx.set_lib_id(prometheus_lib.path(), self.toolkit)
+      drake.cxx.set_lib_id(prometheus_lib.path())
       return True
 
   cmake_vars.update({
