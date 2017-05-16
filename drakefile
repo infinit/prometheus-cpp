@@ -89,8 +89,9 @@ def configure(
     # libprometheus-cpp.  But compiling the latter as a shared library
     # does not make the former PIC.  So force -fPIC.
     # https://cmake.org/pipermail/cmake/2012-June/050941.html
-    'CMAKE_C_FLAGS': '-fPIC',
-    'CMAKE_CXX_FLAGS': '-fPIC',
+    'CMAKE_C_FLAGS': '-fPIC' ,
+    'CMAKE_CXX_FLAGS': (('-stdlib=libc++' if cxx_toolkit.os == drake.os.macos else '')
+                        + ' -fPIC'),
     })
   if drake.path_source().absolute():
     cmake_source = drake.path_source() / drake.Drake.current.prefix
