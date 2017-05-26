@@ -96,7 +96,8 @@ def configure(
   if drake.path_source().absolute():
     cmake_source = drake.path_source() / drake.Drake.current.prefix
   else:
-    cmake_source = '../../../../prometheus/prometheus-cpp'
+    cmake_source = drake.node('CMakeLists.txt').path().dirname()
+    cmake_source = cmake_source.without_prefix(drake.Drake.current.prefix)
 
   cmake = PrometheusCMakeBuilder(cxx_toolkit, srcs, dsts, cmake_vars,
                                  targets = targets,
@@ -104,7 +105,6 @@ def configure(
   global cxx_config
   cxx_config = drake.cxx.Config(in_cxx_config)
   cxx_config += protobuf_config
-
 
 
 # Local Variables:
