@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "histogram.h"
 #include "registry.h"
@@ -17,10 +18,12 @@ class MetricsHandler;
 
 class Exposer {
  public:
-  Exposer(const std::string& bind_address);
+  explicit Exposer(const std::string& bind_address,
+                   const std::string& uri = std::string("/metrics"));
   /// Change the exposition port.
   void
-  rebind(const std::string& bind_address);
+  rebind(const std::string& bind_address,
+                   const std::string& uri = std::string("/metrics"));
   ~Exposer();
   void RegisterCollectable(const std::weak_ptr<Collectable>& collectable);
 
@@ -29,5 +32,6 @@ class Exposer {
   std::vector<std::weak_ptr<Collectable>> collectables_;
   std::shared_ptr<Registry> exposer_registry_;
   std::unique_ptr<detail::MetricsHandler> metrics_handler_;
+  std::string uri_;
 };
 }
