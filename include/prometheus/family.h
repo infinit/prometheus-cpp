@@ -27,6 +27,10 @@ class Family : public Collectable {
 
   Family(const std::string& name, const std::string& help,
          const std::map<std::string, std::string>& constant_labels);
+
+  /// Name of the family.
+  const std::string& name() const;
+
   template <typename... Args>
   T& Add(const std::map<std::string, std::string>& labels, Args&&... args);
   void Remove(T* metric);
@@ -56,6 +60,12 @@ Family<T>::Family(const std::string& name, const std::string& help,
                   const std::map<std::string, std::string>& constant_labels)
     : name_(name), help_(help), constant_labels_(constant_labels) {
   assert(CheckMetricName(name_));
+}
+
+template <typename T>
+const std::string&
+  Family<T>::name() const {
+  return name_;
 }
 
 template <typename T>
