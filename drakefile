@@ -22,10 +22,10 @@ def configure(
   global prometheus_include_path, prometheus_lib, sources
   prometheus_include_path = [
     # libprometheus-cpp's header.
-    drake.path_root() / drake.path_source('include'),
+    drake.path_source('include'),
     # prometheus_client_model, a submodule, that contains the protobuf
     # support: metrics.pb.h.
-    drake.path_root() / drake.path_build('lib/cpp'),
+    drake.path_build('lib/cpp'),
   ]
   prometheus_lib = drake.cxx.DynLib('lib/prometheus-cpp', tk = cxx_toolkit)
   # Prometheus git repo.
