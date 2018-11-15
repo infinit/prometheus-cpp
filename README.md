@@ -17,23 +17,23 @@ other push/pull collections can be added as plugins.
 #include <string>
 #include <thread>
 
-#include "lib/exposer.h"
-#include "lib/registry.h"
+#include <prometheus/exposer.h>
+#include <prometheus/registry.h>
 
 int main(int argc, char** argv) {
   using namespace prometheus;
 
   // create an http server running on port 8080
-  auto exposer = Exposer{"127.0.0.1:8080"};
+  Exposer exposer{"127.0.0.1:8080"};
 
   // create a metrics registry with component=main labels applied to all its
   // metrics
   auto registry = std::make_shared<Registry>();
 
   // add a new counter family to the registry (families combine values with the
-  // same name, but distinct label dimenstions)
+  // same name, but distinct label dimensions)
   auto& counter_family = BuildCounter()
-                             .Name("time_running_seconds")
+                             .Name("time_running_seconds_total")
                              .Help("How many seconds is this server running?")
                              .Labels({{"label", "value"}})
                              .Register(*registry);
@@ -54,6 +54,10 @@ int main(int argc, char** argv) {
 }
 ```
 
+## Requirements
+
+Using `prometheus-cpp` requires a C++11 compliant compiler. It has been successfully tested with GNU GCC 4.8 on Ubuntu Trusty and Visual Studio 2017 (but Visual Studio 2015 should work, too).
+
 ## Building
 
 There are two supported ways to build
@@ -66,11 +70,7 @@ the [travis build script](.travis.yml) might help.
 
 ### via CMake
 
-One prerequisite for performing the build using CMake is
-having [Protocol Buffers](https://github.com/google/protobuf) >= 3.0
-installed. See the [travis build script](.travis.yml) for how to build
-it from source, or use your operating systems package manager to
-install it.
+For CMake builds don't forget to fetch the submodules first. Then build as usual.
 
 ``` shell
 # fetch third-party dependencies
@@ -97,107 +97,68 @@ make DESTDIR=`pwd`/deploy install
 ### via Bazel
 
 Install [bazel](https://www.bazel.io).  Bazel makes it easy to add
-this repo to your project as a dependency. Unfortunately some of the
-direct and transitive dependencies do not provide bazel files. You need
-to add the following to your WORKSPACE:
+this repo to your project as a dependency. Just add the following
+to your `WORKSPACE`:
 
-```
-new_git_repository(
-    name = "prometheus_client_model",
-    remote = "https://github.com/prometheus/client_model.git",
-    commit = "e2da43a",
-    build_file_content = """
-cc_library(
-    name = "prometheus_client_model",
-    srcs = [
-        "cpp/metrics.pb.cc",
-    ],
-    hdrs = [
-         "cpp/metrics.pb.h",
-    ],
-    includes = [
-         "cpp",
-    ],
-    visibility = ["//visibility:public"],
-    deps = ["@protobuf//:protobuf"],
-)
-    """,
+```python
+http_archive(
+    name = "com_github_jupp0r_prometheus_cpp",
+    strip_prefix = "prometheus-cpp-master",
+    urls = ["https://github.com/jupp0r/prometheus-cpp/archive/master.zip"],
 )
 
-git_repository(
-    name = "protobuf",
-    remote = "https://github.com/google/protobuf.git",
-    tag = "v3.0.0",
-    )
+load("@com_github_jupp0r_prometheus_cpp//:repositories.bzl", "prometheus_cpp_repositories")
 
-new_git_repository(
-    name = "civetweb",
-    remote = "https://github.com/civetweb/civetweb.git",
-    commit = "fbdee74",
-    build_file_content = """
-cc_library(
-    name = "civetweb",
-    srcs = [
-         "src/civetweb.c",
-         "src/CivetServer.cpp",
-    ],
-    hdrs = [
-         "include/civetweb.h",
-         "include/CivetServer.h",
-         "src/md5.inl",
-         "src/handle_form.inl",
-    ],
-    includes = [
-         "include",
-    ],
-    copts = [
-          "-DUSE_IPV6",
-          "-DNDEBUG",
-          "-DNO_CGI",
-          "-DNO_CACHING",
-          "-DNO_SSL",
-          "-DNO_FILES",
-    ],
-    visibility = ["//visibility:public"],
-)
-"""
-)
-
-git_repository(
-    name = "prometheus_cpp",
-    remote = "https://github.com/jupp0r/prometheus-cpp.git",
-    commit = "9c865b1c1a4234fa063e91225bb228111ee922ac",
-    )
+prometheus_cpp_repositories()
 ```
 
-Then, you can reference this library in your own BUILD file, as
+Then, you can reference this library in your own `BUILD` file, as
 demonstrated with the sample server included in this repository:
 
-```
+```python
 cc_binary(
     name = "sample_server",
     srcs = ["sample_server.cc"],
-    deps = ["@prometheus_cpp//lib:prometheus-cpp"],
+    deps = ["@com_github_jupp0r_prometheus_cpp//:prometheus_cpp"],
 )
 ```
 
+When you call `prometheus_cpp_repositories()` in your `WORKSPACE` file,
+you introduce the following dependencies, if they do not exist yet, to your project:
+
+* `load_civetweb()` to load `civetweb` rules for Civetweb
+* `load_com_google_googletest()` to load `com_google_googletest` rules for Google gtest
+* `load_com_google_googlebenchmark()` to load `com_github_google_benchmark` rules for Googlebenchmark
+* `load_com_github_curl()` to load `com_github_curl` rules for curl
+* `load_net_zlib_zlib()` to load `net_zlib_zlib` rules for zlib
+
+The list of dependencies is also available from file `repositories.bzl`.
+
+
 ## Contributing
+
+Please adhere to the [Google C++ Style
+Guide](https://google.github.io/styleguide/cppguide.html). Make sure
+to clang-format your patches before opening a PR. Also make sure to
+adhere to [these commit message
+guidelines](https://chris.beams.io/posts/git-commit/).
 
 You can check out this repo and build the library using
 ``` bash
-bazel build //:prometheus-cpp
+bazel build //...           # build everything
+bazel build //core //pull   # build just the libraries
 ```
 
 Run the unit tests using
 ```
-bazel test //tests:prometheus_test
+bazel test //...
 ```
 
 There is also an integration test that
 uses [telegraf](https://github.com/influxdata/telegraf) to scrape a
 sample server. With telegraf installed, it can be run using
 ```
-bazel test //tests/integration:scrape_test
+bazel test //pull/tests/integration:scrape-test
 ```
 
 ## Benchmarks
@@ -205,14 +166,14 @@ bazel test //tests/integration:scrape_test
 There's a benchmark suite you can run:
 
 ```
-bazel run -c opt tests/benchmark/benchmarks
+bazel run -c opt //core/tests/benchmark
 
 INFO: Found 1 target...
-Target //tests/benchmark:benchmarks up-to-date:
-  bazel-bin/tests/benchmark/benchmarks
+Target //core/tests/benchmark:benchmark up-to-date:
+  bazel-bin/core/tests/benchmark/benchmark
 INFO: Elapsed time: 1.682s, Critical Path: 1.56s
 
-INFO: Running command line: bazel-bin/tests/benchmark/benchmarks
+INFO: Running command line: bazel-bin/core/tests/benchmark/benchmark
 Run on (8 X 2300 MHz CPU s)
 2016-10-17 15:56:49
 Benchmark                              Time           CPU Iterations
@@ -245,27 +206,21 @@ BM_Registry_CreateCounter/4k    18246638 ns   18150525 ns         40
 ```
 
 ## Project Status
-Alpha
-
-* parts of the library are instrumented by itself (bytes scraped,
-  number of scrapes, scrape request latencies)
-* there is a working [example](tests/integration/sample_server.cc)
-  that prometheus successfully scrapes
-* gauge, counter and histogram metrics are implemented, summaries
-  aren't
+Beta, getting ready for 1.0. The library is pretty stable and used in
+production. There are some small breaking API changes that might
+happen before 1.0 Parts of the library are instrumented by itself
+(bytes scraped, number of scrapes, scrape request latencies).  There
+is a working [example](pull/tests/integration/sample_server.cc) that's
+scraped by telegraf as part of integration tests.
 
 ## FAQ
 
-### Why do you not provide a `protobuf` version as a submodule in `3rdparty`?
+### What scrape formats do you support
 
-We opted against the submodule solution for protobuf, because
-otherwise ABI compatibiliy issues would force all consumers of
-`prometheus-cpp` to use exactly the same protobuf version as the one
-inside the submodule if they were using protobuf on its own.
-
-To phrase it differently, this library should not control the exact
-version, but the executable linking against it should determine a
-version that other libraries also link against.
+Only the [Prometheus Text Exposition
+Format](https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md#text-format-details).
+Support for the protobuf format was removed because it's been removed
+from Prometheus 2.0.
 
 ## License
 

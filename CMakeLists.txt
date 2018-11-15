@@ -1,69 +1,76 @@
-cmake_minimum_required(VERSION 2.8.12.2 FATAL_ERROR)
+
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 project(prometheus-cpp)
-enable_testing()
+
 include(GNUInstallDirs)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if(NOT DEFINED CMAKE_CXX_STANDARD AND UNIX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+option(ENABLE_PULL "Build prometheus-cpp pull library" ON)
+option(ENABLE_PUSH "Build prometheus-cpp push library" ON)
+option(ENABLE_COMPRESSION "Enable gzip compression" ON)
+option(ENABLE_TESTING "Build tests" ON)
+option(USE_THIRDPARTY_LIBRARIES "Use 3rdParty submodules" ON)
+option(OVERRIDE_CXX_STANDARD_FLAGS "Force building with -std=c++11 even if the CXXLFAGS are configured differently" ON)
+
+if(OVERRIDE_CXX_STANDARD_FLAGS)
+  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_EXTENSIONS Off)
 endif()
 
-find_package(GoogleBenchmark)
-find_package(Protobuf REQUIRED)
-find_package(Telegraf)
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads)
+
+if(ENABLE_TESTING)
+  if(USE_THIRDPARTY_LIBRARIES)
+    find_package(googlemock-3rdparty CONFIG REQUIRED)
+  else()
+    find_package(GTest 1.8.1 CONFIG REQUIRED)
+  endif()
+  find_package(GoogleBenchmark)
+  enable_testing()
+endif()
 
 # suppress warnings
 
-if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
-endif()
-
-# civetweb
-
-set(CIVETWEB_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/3rdparty/civetweb/include)
-
-add_library(civetweb OBJECT
-  3rdparty/civetweb/include/CivetServer.h
-  3rdparty/civetweb/include/civetweb.h
-  3rdparty/civetweb/src/CivetServer.cpp
-  3rdparty/civetweb/src/civetweb.c
-  3rdparty/civetweb/src/handle_form.inl
-  3rdparty/civetweb/src/md5.inl
-)
-
-target_compile_definitions(civetweb PRIVATE
-  USE_IPV6
-  NDEBUG
-  NO_CGI
-  NO_CACHING
-  NO_SSL
-  NO_FILES
-)
-
-target_include_directories(civetweb PUBLIC
-  ${CIVETWEB_INCLUDE_DIR}
-)
-
-# google mock
-
-add_library(gmock_main STATIC EXCLUDE_FROM_ALL
-  3rdparty/googletest/googletest/src/gtest-all.cc
-  3rdparty/googletest/googlemock/src/gmock-all.cc
-  3rdparty/googletest/googlemock/src/gmock_main.cc
-)
-
-target_include_directories(gmock_main
-  PUBLIC
-    3rdparty/googletest/googletest/include
-    3rdparty/googletest/googlemock/include
-  PRIVATE
-    3rdparty/googletest/googletest
-    3rdparty/googletest/googlemock
+add_compile_options(
+  $<$<AND:$<STREQUAL:$<COMPILE_LANGUAGE>,CXX>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-deprecated-declarations>
 )
 
 # prometheus-cpp
 
-add_subdirectory(lib)
-add_subdirectory(tests)
+add_subdirectory(core)
+
+if(ENABLE_PULL)
+  add_subdirectory(pull)
+endif()
+
+if(ENABLE_PUSH)
+  add_subdirectory(push)
+endif()
+
+# install
+
+include(CMakePackageConfigHelpers)
+
+install(
+  EXPORT ${PROJECT_NAME}-targets
+  NAMESPACE ${PROJECT_NAME}::
+  FILE ${PROJECT_NAME}-targets.cmake
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+)
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}-config.cmake.in"
+  ${PROJECT_NAME}-config.cmake
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+  PATH_VARS CMAKE_INSTALL_INCLUDEDIR
+)
+
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+)
