@@ -121,6 +121,12 @@ class Family : public Collectable {
   /// \return Zero or more samples for each dimensional data.
   std::vector<MetricFamily> Collect() override;
 
+  std::string
+  Name()
+  {
+    return name_;
+  }
+
  private:
   std::unordered_map<std::size_t, std::unique_ptr<T>> metrics_;
   std::unordered_map<std::size_t, std::map<std::string, std::string>> labels_;
