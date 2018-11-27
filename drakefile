@@ -4,8 +4,7 @@ import drake.cxx
 import drake.git
 import os
 
-# The path to the libprometheus-cpp library.
-prometheus_lib = None
+prometheus_libs = None
 sources = None
 cxx_config = None
 
@@ -17,21 +16,20 @@ def configure(
     protobuf_lib,
     cmake_vars = {}
 ):
-  global prometheus_lib, sources
-  prometheus_lib = drake.cxx.DynLib('lib/prometheus-cpp', tk = cxx_toolkit)
+  global prometheus_libs, sources
+  prometheus_libs = [drake.cxx.DynLib(p, tk = cxx_toolkit) for p in [
+    'core/prometheus-cpp-core',
+    'pull/prometheus-cpp-pull',
+  ]]
   # Prometheus git repo.
   git = drake.git.Git()
   # The files we depend upon.
   files = git.ls_files('include', 'lib', 'CMakeLists.txt')
   srcs = [protoc, protobuf_lib] + drake.nodes(*files)
 
-  dsts = [prometheus_lib] + drake.nodes(
-    'lib/cpp/metrics.pb.h'
-    )
-
   # Makefile target to run.
   targets = [
-    'prometheus-cpp',
+    'all',
   ]
 
   class PrometheusCMakeBuilder(drake.cmake.CMakeBuilder):
@@ -39,10 +37,11 @@ def configure(
     def execute(self):
       if not super().execute():
         return False
-      self.cmd(
-        'Fix rpath for {}'.format(prometheus_lib),
-        cxx_toolkit.rpath_set_command(prometheus_lib, '.'))
-      drake.cxx.set_lib_id(prometheus_lib.path())
+      for l in prometheus_libs:
+        self.cmd(
+          'Fix rpath for {}'.format(l),
+          cxx_toolkit.rpath_set_command(l, '.'))
+        drake.cxx.set_lib_id(l.path())
       return True
 
   cmake_vars.update({
@@ -63,14 +62,15 @@ def configure(
     cmake_source = drake.path_source() / drake.Drake.current.prefix
   else:
     cmake_source = drake.node('CMakeLists.txt').path(absolute = True).dirname()
-  cmake = PrometheusCMakeBuilder(cxx_toolkit, srcs, dsts, cmake_vars,
+  cmake = PrometheusCMakeBuilder(cxx_toolkit, srcs, prometheus_libs, cmake_vars,
                                  targets = targets,
                                  path_to_cmake_source = cmake_source)
   global cxx_config
   cxx_config = drake.cxx.Config(in_cxx_config)
   cxx_config += protobuf_config
   # libprometheus-cpp's header.
-  cxx_config.add_local_include_path('include')
+  cxx_config.add_local_include_path('core/include')
+  cxx_config.add_local_include_path('pull/include')
   # prometheus_client_model, a submodule, that contains the protobuf
   # support: metrics.pb.h.
   cxx_config.add_local_include_path('lib/cpp')
